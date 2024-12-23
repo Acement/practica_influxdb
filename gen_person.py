@@ -105,26 +105,5 @@ if __name__ == '__main__':
 
     mp.Pool().map(gen_person,nombres_list)
 
-    #gen_person()
-    
-    '''for i in range(1,5):
-        p1 = mp.Process(target=gen_person())
-        p2 = mp.Process(target=gen_person())
-        p3 = mp.Process(target=gen_person())
-        p4 = mp.Process(target=gen_person())
-
-        p1.start()
-        p2.start()
-        p3.start()
-        p4.start()
-
-        print(f"Generacion de datos, Iteracion Nº{i}")
-
-        p1.join()
-        p2.join()
-        p3.join()
-        p4.join()
-
-        print("Procesor reunidos")'''
 
     print("Generacion de datos terminada")
