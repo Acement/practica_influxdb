@@ -1,5 +1,6 @@
 import random,time,os
 import numpy as np
+import multiprocessing as mp
 import influxdb_client as idb
 from influxdb_client.client.write_api import SYNCHRONOUS
 
@@ -20,24 +21,25 @@ client_idb = idb.InfluxDBClient(
 )
 write_api = client_idb.write_api(write_options=SYNCHRONOUS)
 
-#Variables externas
-ext_var = {
-    "tiendas": [['a',0],['b',0],['c',0],['d',0]],                   #Tiendas del mall
-    "temperatura":15,                                               #Temperatura fuera del mall
-    "num": 0}                                                       #Numero utilizado para ver si el client_mall sale del mall
-
-#Variables de client_mall
-client_mall = {
-    "nombre": random.choice(nombres) + " " + random.choice(apellidos),                                               #Nombre del client_mall
-    "tienda_actual": "Transito",                                    #Tienda en la que se encuentra el client_mall
-    "prob_compra": random.randint(0,30),                                              #Probabilidad de comprar algun item en tienda
-    "prob_salir":round(((-pow(15,2)/60)+(15/2)+(45/4)),2),     #Probabilidad de que el client_mall salga del mall
-    "prob_cambio": random.randint(20,50)}                                              #Probabilidad de cambiarse de tienda
 
 
-def main():
+def gen_person(nombre):
+    #Variables externas
+    ext_var = {
+        "tiendas": [['a',0],['b',0],['c',0],['d',0]],                   #Tiendas del mall
+        "temperatura":15,                                               #Temperatura fuera del mall
+        "num": 0}                                                       #Numero utilizado para ver si el client_mall sale del mall
+
+    #Variables de client_mall
+    client_mall = {
+        "nombre": nombre,      #Nombre del client_mall
+        "tienda_actual": "Transito",                                            #Tienda en la que se encuentra el client_mall
+        "prob_compra": random.randint(0,30),                                    #Probabilidad de comprar algun item en tienda
+        "prob_salir":round(((-np.pow(15,2)/60)+(15/2)+(45/4)),2),                  #Probabilidad de que el client_mall salga del mall
+        "prob_cambio": random.randint(20,50)}                                   #Probabilidad de cambiarse de tienda
     #Genera data
     while (ext_var.get("num") <= (100 - client_mall.get("prob_salir"))):
+        print(f"Nombre de cliente: {client_mall.get("nombre")}")
         #Genera temperatura
         temperatura = round((ext_var.get("temperatura") + (random.randint(-10,11))/10),2)
         if temperatura > 45:
@@ -50,7 +52,7 @@ def main():
         if temperatura > 45 or temperatura < -15:
             prob_salir = 0
         else:
-            prob_salir = round(((-pow(temperatura,2)/60)+(temperatura/2)+(45/4)),2)
+            prob_salir = round(((-np.pow(temperatura,2)/60)+(temperatura/2)+(45/4)),2)
         
         client_mall["prob_salir"] = prob_salir
 
@@ -94,4 +96,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    nombres_list = []
+
+    for i in range(0,50):
+        nombres_list.append(random.choice(nombres) + " " + random.choice(apellidos))
+    
+    print(nombres_list)
+
+    mp.Pool().map(gen_person,nombres_list)
+
+
+    print("Generacion de datos terminada")
