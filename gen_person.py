@@ -11,7 +11,7 @@ apellidos = ["Cisterna", "Salas", "Saez", "Celis", "Fernandez", "Cid", "Inostroz
 token = os.environ.get("INFLUXDB_TOKEN") #Token API que nos da InfluxDB
 org = "Practica 2024"                    #Organizacion creada en InfluxDB
 url = "http://localhost:8086"            #Direccion al servicio de Influxdb
-bucket="Test mall 3"                         #Bucket donde se guardaran las medidas
+bucket="Test mall 3"                     #Bucket donde se guardaran las medidas
 
 #Iniciando client_mall
 client_idb = idb.InfluxDBClient(
@@ -35,7 +35,7 @@ def gen_person(nombre):
         "nombre": nombre,      #Nombre del client_mall
         "tienda_actual": "Transito",                                            #Tienda en la que se encuentra el client_mall
         "prob_compra": random.randint(0,30),                                    #Probabilidad de comprar algun item en tienda
-        "prob_salir":round(((-np.pow(15,2)/60)+(15/2)+(45/4)),2),                  #Probabilidad de que el client_mall salga del mall
+        "prob_salir":round(((-np.pow(15,2)/60)+(15/2)+(45/4)),2),               #Probabilidad de que el client_mall salga del mall
         "prob_cambio": random.randint(20,50)}                                   #Probabilidad de cambiarse de tienda
     #Genera data
     while (ext_var.get("num") <= (100 - client_mall.get("prob_salir"))):
