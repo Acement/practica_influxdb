@@ -11,7 +11,7 @@ apellidos = ["Cisterna", "Salas", "Saez", "Celis", "Fernandez", "Cid", "Inostroz
 token = os.environ.get("INFLUXDB_TOKEN") #Token API que nos da InfluxDB
 org = "Practica 2024"                    #Organizacion creada en InfluxDB
 url = "http://localhost:8086"            #Direccion al servicio de Influxdb
-bucket="Test mall 3"                     #Bucket donde se guardaran las medidas
+bucket="Test mall"                     #Bucket donde se guardaran las medidas
 
 #Iniciando client_mall
 client_idb = idb.InfluxDBClient(
@@ -99,11 +99,14 @@ if __name__ == '__main__':
     nombres_list = []
 
     for i in range(0,50):
-        nombres_list.append(random.choice(nombres) + " " + random.choice(apellidos))
+        gen_nombre = random.choice(nombres) + " " + random.choice(apellidos) + " " + random.choice(apellidos)
+        #Verificar que no se repitan los nombres
+        while gen_nombre in nombres_list:
+            gen_nombre = random.choice(nombres) + " " + random.choice(apellidos) + " " + random.choice(apellidos)
+        nombres_list.append(gen_nombre)
     
-    print(nombres_list)
 
     mp.Pool().map(gen_person,nombres_list)
 
-
+    print(nombres_list)
     print("Generacion de datos terminada")
