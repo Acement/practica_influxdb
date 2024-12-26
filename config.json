@@ -1,0 +1,14 @@
+{
+    "gen_config":{
+        "cant_clientes": 3,
+        "nombres": ["Pedro", "Juan", "Diego", "Ana", "Pablo", "Fernanda", "Alida", "Jose", "Andres", "Emilia"],
+        "apellidos":  ["Cisterna", "Salas", "Saez", "Celis", "Fernandez", "Cid", "Inostroza","Perez", "Peso", "Gonzales"],
+        "tiendas": ["a","b","c","d"],
+        "temperatura":15
+    },
+    "idb_config":{
+        "org":"Practica 2024",
+        "url": "http://localhost:8086",
+        "bucket": "Test mall"    
+    }
+}
