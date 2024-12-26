@@ -73,10 +73,10 @@ def mean_time():
         if sec == 0 and enter[1] < out[1]:
             min = 1
         elif sec < 0:
-            sec = 60 - sec
+            sec = 60 + sec
             min = 1
         
-        min = out[1] - enter[1] + min
+        min = out[1] - enter[1] - min
 
 
         if sec / 10 < 1:
