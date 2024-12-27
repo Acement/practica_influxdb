@@ -1,14 +1,18 @@
-import os
+import os,json
 import numpy as np
 import influxdb_client as idb
 from influxdb_client.client.write_api import SYNCHRONOUS
 import datetime
 
+#Cargando JSON
+with open("config.json") as f:
+    data = json.load(f)
+
 #Seteando client_mall de influxdb
-token = os.environ.get("INFLUXDB_TOKEN") #Token API que nos da InfluxDB
-org = "Practica 2024"                    #Organizacion creada en InfluxDB
-url = "http://localhost:8086"            #Direccion al servicio de Influxdb
-bucket="Test mall"                     #Bucket donde se sacaran las medidas
+token  = os.environ.get("INFLUXDB_TOKEN")           #Token API que nos da InfluxDB
+org    = data["idb_config"]["org"]                  #Organizacion creada en InfluxDB
+url    = data["idb_config"]["url"]                  #Direccion al servicio de Influxdb
+bucket = data["idb_config"]["bucket"]               #Bucket donde se guardaran las medidas
 
 #Iniciando client_mall
 client_idb = idb.InfluxDBClient(
@@ -21,7 +25,8 @@ query_api = client_idb.query_api()
 
 def mean_time():
     query = f'from(bucket: "{bucket}")\
-            |> range(start: -1h)\
+            |> range(start: -15m)\
+            |> filter(fn: (r) => r._measurement == "Cliente")\
             |> group(columns: ["Nombre"])'
     result = query_api.query(org=org, query=query)
 
@@ -97,6 +102,7 @@ def mean_time():
 def mall_sells():
     query = f'from(bucket: "{bucket}")\
     |> range(start: -1h)\
+    |> filter(fn: (r) => r._measurement == "Compras")\
     |> filter(fn: (r) => r._field == "Compra")'
     
 
@@ -108,16 +114,26 @@ def mall_sells():
             shop_name = record.values.get("Tienda")
             if len(shops_list) == 0:
                 shop = [shop_name,1]
+                print("Se agrego la primera tienda")
+                print(shop)
                 shops_list.append(shop)
+
             for i in range(0,len(shops_list)):
                 if i == len(shops_list) - 1 and shops_list[i][0] != shop_name:
                     shop = [shop_name,1]
+                    print("Nueva tienda agregada-------------------------------")
+                    print(shop)
                     shops_list.append(shop)
-                elif i != len(shops_list) and shop_name == shops_list[i][0]:
+
+                elif i != len(shops_list) - 1 and shops_list[i][0] == shop_name:
+                    print("Agrega venta a tienda")
                     shops_list[i][1] += 1
+                    print(shops_list[i])
+                    break
                 
     for i in shops_list:
         print(f"Tienda {i[0]} vendio {i[1]} productos")
+
 def main():
     mean_time()
     print()

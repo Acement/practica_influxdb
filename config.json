@@ -1,9 +1,29 @@
 {
     "gen_config":{
-        "cant_clientes": 3,
+        "cant_clientes": 20,
         "nombres": ["Pedro", "Juan", "Diego", "Ana", "Pablo", "Fernanda", "Alida", "Jose", "Andres", "Emilia"],
         "apellidos":  ["Cisterna", "Salas", "Saez", "Celis", "Fernandez", "Cid", "Inostroza","Perez", "Peso", "Gonzales"],
-        "tiendas": ["a","b","c","d"],
+        "edificio": [{
+            "nombre_piso": "Primer piso",
+            "id": 1,
+            "tiendas":["1a","1b","1c","1d"]
+        },{
+            "nombre_piso": "Segundo piso",
+            "id": 2,
+            "tiendas":["2a","2b","2c","2d"]
+        },{
+            "nombre_piso": "Tercer piso",
+            "id": 3,
+            "tiendas":["3a","3b","3c","3d"]
+        },{
+            "nombre_piso": "Cuarto piso",
+            "id": 4,
+            "tiendas":["4a","4b","4c","4d"]
+        },{
+            "nombre_piso": "Quinto piso",
+            "id": 5,
+            "tiendas":["5a","5b","5c","5d"]
+        }],
         "temperatura":15
     },
     "idb_config":{
