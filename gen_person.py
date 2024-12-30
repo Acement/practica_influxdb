@@ -4,7 +4,7 @@ import multiprocessing as mp
 import influxdb_client as idb
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-with open("config.json") as f:
+with open("config.json",'r') as f:
     data = json.load(f)
 
 #Seteando client_mall de influxdb
@@ -39,8 +39,8 @@ def gen_person(nombre):
     #Variables de client_mall
     client_mall = {
         "nombre": nombre,                                                                                                               #Nombre del client_mall
-        "tienda_actual": "Entrada",                                                                                                    #Tienda en la que se encuentra el client_mall
-        "id_piso": 0,
+        "tienda_actual": "Entrada",                                                                                                     #Tienda en la que se encuentra el client_mall
+        "id_piso": 0,                                                                                                                   #Id del piso actual
         "prob_compra": random.randint(0,30),                                                                                            #Probabilidad de comprar algun item en tienda
         "prob_salir":round(((-np.pow(data["gen_config"]["temperatura"],2)/60)+(data["gen_config"]["temperatura"]/2)+(45/4)),2),         #Probabilidad de que el client_mall salga del mall
         "prob_cambio": random.randint(20,50)}                                                                                           #Probabilidad de cambiarse de tienda
@@ -49,7 +49,7 @@ def gen_person(nombre):
     while (ext_var.get("num") <= (100 - client_mall.get("prob_salir"))):
         
         #Genera temperatura
-        temperatura = round((ext_var.get("temperatura") + (random.randint(-10,11))/10),2)
+        temperatura = round((ext_var.get("temperatura") + (random.randint(-5 + data["gen_config"]["temp_cambio"],5 + data["gen_config"]["temp_cambio"]))/10),2)
 
         if temperatura > 45:            #Temperatura Maxima
             temperatura = 45
@@ -57,9 +57,12 @@ def gen_person(nombre):
             temperatura = -15
 
         ext_var["temperatura"] = temperatura
+        data["gen_config"]["temperatura"] = temperatura
+        with open("config.json",'w') as f:
+            json.dump(data,f,indent=1)
 
         #Calcula la probabilidad de que el client_mall salga
-        if temperatura > 45 or temperatura < -15:           #Si se pasa de los limites la prob de que salga es 1% (Al generar numeros aleatorios para ver si sale, tiene que generar 100)
+        if temperatura > 45 or temperatura < -15:                                               #Si se pasa de los limites la prob de que salga es 1% (Al generar numeros aleatorios para ver si sale, tiene que generar 100)
             prob_salir = 0
         else:
             prob_salir = round(((-np.pow(temperatura,2)/60)+(temperatura/2)+(45/4)),2)          #Formula para calcular la probabilidad tal que a -15ºC o 45ºC sea 0 (valores minimos) y la probabilidad a 15ºC sea 15%
@@ -84,14 +87,31 @@ def gen_person(nombre):
                         client_mall["tienda_actual"] = "Transito"
                         client_mall["id_piso"] = 0
 
+                        #La temeperatura tambien cambia en transito
+                        temperatura = round((ext_var.get("temperatura") + (random.randint(-5 + data["gen_config"]["temp_cambio"],5 + data["gen_config"]["temp_cambio"]))/10),2)
+
+                        if temperatura > 45:            #Temperatura Maxima
+                            temperatura = 45
+                        elif temperatura < -15:         #Temperatura Minima
+                            temperatura = -15
+
+                        ext_var["temperatura"] = temperatura
+                        data["gen_config"]["temperatura"] = temperatura
+                        #sube la temperatura generata al JSON
+                        with open("config.json",'w') as f:
+                            json.dump(data,f,indent=1)
+
+                        #Sube el punto a influxdb
                         p = idb.Point("Cliente").field("Temperatura",ext_var.get("temperatura")).tag("Nombre",client_mall.get("nombre")).tag("Tienda actual",client_mall.get("tienda_actual"))
                         write_api.write(bucket=bucket, org=org, record=p)
 
-                        time.sleep(1)
+                        
                         print(f"Nombre de cliente: {client_mall.get("nombre")}")
                         print(f"Temperatura afuera: {temperatura}C")
                         print(f"Tienda actual: {client_mall.get("tienda_actual")}")
                     
+                        time.sleep(1)
+
                     client_mall["tienda_actual"] = tiendas[temp][0]
                     client_mall["id_piso"] = tiendas[temp][1]
 
