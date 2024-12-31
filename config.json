@@ -1,6 +1,10 @@
 {
  "gen_config": {
-  "cant_clientes": 5,
+  "cant_clientes": 1000,
+  "hora_apertura" : 9,
+  "hora_cierre": 19,
+  "temp_max" : 45,
+  "temp_min" : -15,
   "nombres": [
    "Pedro",
    "Juan",
@@ -77,7 +81,7 @@
     ]
    }
   ],
-  "temperatura": 15,
+  "temperatura": 10,
   "temp_cambio": 0
  },
  "idb_config": {

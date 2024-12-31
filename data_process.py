@@ -25,7 +25,7 @@ query_api = client_idb.query_api()
 
 def mean_time():
     query = f'from(bucket: "{bucket}")\
-            |> range(start: -15m)\
+            |> range(start: 0)\
             |> filter(fn: (r) => r._measurement == "Cliente")\
             |> group(columns: ["Nombre"])'
     result = query_api.query(org=org, query=query)
@@ -71,25 +71,31 @@ def mean_time():
         for i in range (0,len(out)):
             out[i] = int(out[i])
 
-        sec = 0
-        min = 0
+        second = out[2] - enter[2]
+        minute = out[1] - enter[1]
+        hour   = out[0] - enter[0]
 
-        sec = out[2] - enter[2]
-        if sec == 0 and enter[1] < out[1]:
-            min = 1
-        elif sec < 0:
-            sec = 60 + sec
-            min = 1
-        
-        min = out[1] - enter[1] - min
+        if second < 0:
+            second += 60
+            minute -= 1
+
+        if minute < 0:
+            minute  += 60
+            hour -= 1
 
 
-        if sec / 10 < 1:
-            print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {min}:0{sec}")
+        if second / 10 < 1:
+            if minute / 10 < 1:
+                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:0{minute}:0{second}")
+            else:
+                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:{minute}:0{second}")
         else:
-            print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {min}:{sec}")
+            if minute / 10 < 1:
+                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:0{minute}:{second}")
+            else:
+                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:{minute}:{second}")
 
-        person_time_list.append(sec + (min * 60))
+        person_time_list.append(second + (minute * 60) + (hour * 60 *60))
 
     #Calcula el tiempo prometio que se quedan las personas
     add = 0
@@ -101,7 +107,7 @@ def mean_time():
 
 def mall_sells():
     query = f'from(bucket: "{bucket}")\
-    |> range(start: -1h)\
+    |> range(start: 0)\
     |> filter(fn: (r) => r._measurement == "Compras")\
     |> filter(fn: (r) => r._field == "Compra")'
     
@@ -114,21 +120,15 @@ def mall_sells():
             shop_name = record.values.get("Tienda")
             if len(shops_list) == 0:
                 shop = [shop_name,1]
-                print("Se agrego la primera tienda")
-                print(shop)
                 shops_list.append(shop)
 
             for i in range(0,len(shops_list)):
                 if i == len(shops_list) - 1 and shops_list[i][0] != shop_name:
                     shop = [shop_name,1]
-                    print("Nueva tienda agregada-------------------------------")
-                    print(shop)
                     shops_list.append(shop)
 
                 elif i != len(shops_list) - 1 and shops_list[i][0] == shop_name:
-                    print("Agrega venta a tienda")
                     shops_list[i][1] += 1
-                    print(shops_list[i])
                     break
                 
     for i in shops_list:
