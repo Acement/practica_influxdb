@@ -1,4 +1,4 @@
-import random,time,os,json
+import random,time,os,json,subprocess
 import datetime
 import numpy as np
 import multiprocessing as mp
@@ -9,6 +9,7 @@ with open("config.json",'r') as f:
     data = json.load(f)
 gen_data = data["gen_config"]
 idb_data = data["idb_config"]
+dt_data  = data["fecha_config"]
 
 with open("temperature.json") as f:
     data= json.load(f)
@@ -41,8 +42,8 @@ def next_time(hour):
     return hour
 
 def hour_to_date(hour):
-    date_sim = datetime.datetime.now()
-    return datetime.datetime(int(date_sim.strftime("%Y")),int(date_sim.strftime("%m")),int(date_sim.strftime("%d")),hour[0] - gen_data["utc_zone"],hour[1],0,0)
+    #date_sim = datetime.datetime.now()
+    return datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],hour[0] - gen_data["utc_zone"],hour[1],0,0)
 
 def gen_person(nombre):
     #Variables externas
@@ -56,6 +57,7 @@ def gen_person(nombre):
 
     #Genera la hora de inicio
     current_hour = [random.randint(gen_data["hora_apertura"],gen_data["hora_cierre"]-1),random.randint(0,59)]
+
 
     #Sacar la temperatura
     hora_temperatura = temperature_data[hour_to_int(current_hour)]
@@ -128,7 +130,7 @@ def gen_person(nombre):
 
                         client_mall["hora"]= next_time(current_hour)
 
-                        if client_mall.get("hora")[0] == gen_data["hora_cierre"]:
+                        if client_mall.get("hora")[0] - gen_data["utc_zone"] == gen_data["hora_cierre"] - gen_data["utc_zone"]:
                             ext_var["num"] = 100
                             break
                         else:
@@ -178,7 +180,7 @@ def gen_person(nombre):
 
         client_mall["hora"] = next_time(current_hour)
 
-        if client_mall.get("hora")[0] == gen_data["hora_cierre"]:
+        if client_mall.get("hora")[0] - gen_data["utc_zone"] == gen_data["hora_cierre"] - gen_data["utc_zone"]:
             ext_var["num"] = 100
         else:
             hora_temperatura = temperature_data[hour_to_int(current_hour)]
@@ -195,6 +197,8 @@ def gen_person(nombre):
 
 
 if __name__ == '__main__':
+    subprocess.call("python3 gen_temp.py", shell=True)
+
     name_list = []
 
     cant_client = gen_data["cant_clientes"]
