@@ -7,12 +7,20 @@ import datetime
 #Cargando JSON
 with open("config.json") as f:
     data = json.load(f)
+gen_data = data["gen_config"]
+idb_data = data["idb_config"]
+dt_data  = data["fecha_config"]
+
+
+
+date_query_start = datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],gen_data["hora_apertura"] - gen_data["utc_zone"],0,0)
+date_query_stop  = datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],gen_data["hora_cierre"]- gen_data["utc_zone"],0,0)
 
 #Seteando client_mall de influxdb
 token  = os.environ.get("INFLUXDB_TOKEN")           #Token API que nos da InfluxDB
-org    = data["idb_config"]["org"]                  #Organizacion creada en InfluxDB
-url    = data["idb_config"]["url"]                  #Direccion al servicio de Influxdb
-bucket = data["idb_config"]["bucket"]               #Bucket donde se guardaran las medidas
+org    = idb_data["org"]                  #Organizacion creada en InfluxDB
+url    = idb_data["url"]                  #Direccion al servicio de Influxdb
+bucket = idb_data["bucket"]               #Bucket donde se guardaran las medidas
 
 #Iniciando client_mall
 client_idb = idb.InfluxDBClient(
@@ -23,9 +31,20 @@ client_idb = idb.InfluxDBClient(
 
 query_api = client_idb.query_api()
 
+def separation():
+    print("-----------------------------------------------")
+
+def menu():
+    print("Elija Opcion:\n")
+    print("1.Tiempo promedio por persona en mall")
+    print("2.Ventas de tiendas")
+    
+    print("\n0.Salir")
+    return input("\nIngrese opcion: ")
+
 def mean_time():
     query = f'from(bucket: "{bucket}")\
-            |> range(start: 0)\
+            |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
             |> filter(fn: (r) => r._measurement == "Cliente")\
             |> group(columns: ["Nombre"])'
     result = query_api.query(org=org, query=query)
@@ -34,7 +53,8 @@ def mean_time():
     person_list = []
     for table in result:
         for record in table.records:
-            time_measure = record.get_time()
+            date = record.get_time()
+            time_measure = datetime.datetime(int(date.strftime("%Y")),int(date.strftime("%m")),int(date.strftime("%d")),int(date.strftime("%H")) + gen_data["utc_zone"],int(date.strftime("%M")),int(date.strftime("%S")))
             name_measure= record.values.get("Nombre")
 
             if name_measure != None:
@@ -107,7 +127,7 @@ def mean_time():
 
 def mall_sells():
     query = f'from(bucket: "{bucket}")\
-    |> range(start: 0)\
+    |> range(start: -12)\
     |> filter(fn: (r) => r._measurement == "Compras")\
     |> filter(fn: (r) => r._field == "Compra")'
     
@@ -135,9 +155,40 @@ def mall_sells():
         print(f"Tienda {i[0]} vendio {i[1]} productos")
 
 def main():
-    mean_time()
-    print()
-    mall_sells()
+    x = False
+    while x == False:
+        try:
+            opt = int(menu())
+            match opt:
+                case 1:
+                    separation()
+                    print("Opcion 1\n")
+                    mean_time()
+                    separation()
+
+                case 2:
+                    separation()
+                    print("Opcion 2\n")
+                    mall_sells()
+                    separation()
+
+                case 0:
+                    separation()
+                    print("Saliendo...")
+                    separation()
+                    x = True
+                
+                case _:
+                    separation()
+                    print("ERROR! No es una opcion")
+                    separation()
+        except:
+            separation()
+            print("ERROR! Ingrese un numero")
+            separation()
+    
+    #mean_time()
+    #mall_sells()
 
     
 
