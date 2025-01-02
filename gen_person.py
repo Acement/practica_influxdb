@@ -42,7 +42,7 @@ def next_time(hour):
 
 def hour_to_date(hour):
     date_sim = datetime.datetime.now()
-    return datetime.datetime(int(date_sim.strftime("%Y")),int(date_sim.strftime("%m")),int(date_sim.strftime("%d")),hour[0] + gen_data["utc_zone"],hour[1],0,0)
+    return datetime.datetime(int(date_sim.strftime("%Y")),int(date_sim.strftime("%m")),int(date_sim.strftime("%d")),hour[0] - gen_data["utc_zone"],hour[1],0,0)
 
 def gen_person(nombre):
     #Variables externas

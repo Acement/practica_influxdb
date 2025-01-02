@@ -83,7 +83,7 @@
   ],
   "temperatura": 10,
   "temp_cambio": 0,
-  "utc_zone": 3
+  "utc_zone": -3
  },
  "idb_config": {
   "org": "Practica 2024",
