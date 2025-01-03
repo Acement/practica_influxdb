@@ -1,8 +1,8 @@
 import json, random
 
+#Carga los datos de configuracion
 with open("config.json",'r') as f:
     data = json.load(f)
-
 gen_data = data["gen_config"]
 ext_data = data["idb_config"]
 
@@ -11,6 +11,7 @@ def gen_temperature():
     temperature = gen_data["temperatura"]
 
     simulated_temp = []
+    #Genera la temperatura por minuto
     for i in range(0,open_time + 1):
         temperature = round(temperature + ((random.randint(-5 + gen_data["temp_cambio"],5 + gen_data["temp_cambio"]))/10),2)
         if temperature > gen_data["temp_max"]:
@@ -23,6 +24,7 @@ def gen_temperature():
     minute    = 0
     json_data = []
 
+    #Asigna una hora a la temperatura
     for i in range(0,open_time + 1):
         if minute < 10:
             print(f"Hora: {hour}:0{minute}, Temperatura: {simulated_temp[i]}")
@@ -39,6 +41,7 @@ def gen_temperature():
             minute = 0
             hour   +=1
 
+    #Guarda la temperatura simulada en un JSON
     with open("temperature.json",'r') as f:
         data = json.load(f)
 
