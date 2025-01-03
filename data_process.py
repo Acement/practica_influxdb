@@ -47,8 +47,9 @@ def separation():
 def menu():
     print("Elija Opcion:\n")
     print("1.Tiempo promedio por persona en mall")
-    print("2.Ventas totales por tiendas")
-    print("3.Ventas totales por hora")
+    print("2.Cantidad de personas por hora")
+    print("3.Ventas totales por tiendas")
+    print("4.Ventas totales por hora")
     
     print("\n0.Salir")
     return input("\nIngrese opcion: ")
@@ -204,13 +205,45 @@ def sells_per_hour():
 
     print(f"\nVentas totales: {add}")
             
+def people_per_hour():
+    query = f'from(bucket: "{bucket}")\
+            |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
+            |> filter(fn: (r) => r._measurement == "Cliente")\
+            |> group(columns: ["Nombre"])'
+    result = query_api.query(org=org, query=query)
+
+    hour_list = []
+    name_list = []
+
+    for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
+                temp = [i,[]]
+                hour_list.append(temp)
+
+    for table in result:
+        for record in table.records:
+            hour_data = record.get_time()
+            hour = int(hour_data.strftime("%H")) + gen_data["utc_zone"]
+            name_data = record.values.get("Nombre")
+            
+            
+
+            for i in hour_list:
+                if i[0] == hour:
+                    if name_data not in i[1]:
+                        i[1].append(name_data)
+                    break
+
+    #hour_list = sort_by_value(hour_list)
+
+    for i in hour_list:
+        print(f"Hora: {i[0]}, Cantidad de personas: {len(i[1])}")
 
 
 
 
 def main():
     x = False
-    '''while x == False:
+    while x == False:
         try:
             opt = int(menu())
             match opt:
@@ -222,12 +255,12 @@ def main():
                     except:
                         print("Error!")
                     separation()
-
+                
                 case 2:
                     separation()
                     try:
                         print("Opcion 2\n")
-                        mall_sells()
+                        people_per_hour()
                     except:
                         print("ERROR!")
                     separation()
@@ -236,11 +269,21 @@ def main():
                     separation()
                     try:
                         print("Opcion 3\n")
+                        mall_sells()
+                    except:
+                        print("ERROR!")
+                    separation()
+
+                case 4:
+                    separation()
+                    try:
+                        print("Opcion 4\n")
                         sells_per_hour()
                     except:
                         print("ERROR!")
                     separation()
 
+                
                 case 0:
                     separation()
                     print("Saliendo...")
@@ -254,11 +297,12 @@ def main():
         except:
             separation()
             print("ERROR! Ingrese un numero")
-            separation()'''
+            separation()
     
     #mean_time()
     #mall_sells()
-    sells_per_hour()
+    #sells_per_hour()
+    #people_per_hour()
 
     
 
