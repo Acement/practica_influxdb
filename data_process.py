@@ -11,6 +11,7 @@ gen_data = data["gen_config"]
 idb_data = data["idb_config"]
 dt_data  = data["fecha_config"]
 
+#Fecha donde se saca las medidas
 date_query_start = datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],gen_data["hora_apertura"] - gen_data["utc_zone"],0,0)
 date_query_stop  = datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],gen_data["hora_cierre"]- gen_data["utc_zone"],0,0)
 
@@ -40,10 +41,11 @@ def sort_by_value(arr): #el valor para la comparacion tiene que estar en arr[0]
             break
     return arr
         
-
+#Una fincion que improme una separacion
 def separation():
     print("-----------------------------------------------")
 
+#Menu para elegir opciones
 def menu():
     print("Elija Opcion:\n")
     print("1.Tiempo promedio por persona en mall")
@@ -54,6 +56,7 @@ def menu():
     print("\n0.Salir")
     return input("\nIngrese opcion: ")
 
+#Calcula el tiempo que cada cliente pasa en el mall y el tiempo promedio
 def mean_time():
     query = f'from(bucket: "{bucket}")\
             |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
@@ -127,15 +130,27 @@ def mean_time():
             else:
                 print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:{minute}:{second}")
 
-        person_time_list.append(second + (minute * 60) + (hour * 60 *60))
+        person_time_list.append(minute + (hour *60))
 
     #Calcula el tiempo prometio que se quedan las personas
     add = 0
     for i in person_time_list:
         add += i
     mean = add/len(person_time_list)
+
+    temp = mean % 60
+
+    mean -= temp
+    mean = mean/60
+
     print()
-    print(f"Tiempo promedio de estadia: {mean}")
+    if mean < 1:
+        print(f"Tiempo promedio de estadia: {temp} minutos")
+    else:
+        if  temp < 10:
+            print(f"Tiempo promedio de estadia: {int(mean)}:0{int(temp)} horas")
+        else:
+            print(f"Tiempo promedio de estadia: {int(mean)}:{int(temp)} horas")
 
 def mall_sells():
     query = f'from(bucket: "{bucket}")\
@@ -213,7 +228,6 @@ def people_per_hour():
     result = query_api.query(org=org, query=query)
 
     hour_list = []
-    name_list = []
 
     for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
                 temp = [i,[]]
@@ -236,7 +250,7 @@ def people_per_hour():
     #hour_list = sort_by_value(hour_list)
 
     for i in hour_list:
-        print(f"Hora: {i[0]}, Cantidad de personas: {len(i[1])}")
+        print(f"De {i[0]}:00 a {i[0] + 1}:00 hubieron {len(i[1])} personas")
 
 
 

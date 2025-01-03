@@ -1,7 +1,7 @@
 {
  "gen_config": {
   "cant_clientes": 1000,
-  "hora_apertura" : 9,
+  "hora_apertura" : 8,
   "hora_cierre": 19,
   "temp_max" : 45,
   "temp_min" : -15,
