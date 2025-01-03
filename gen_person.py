@@ -27,13 +27,14 @@ client_idb = idb.InfluxDBClient(
     token = token,
     org = org
 )
+#Creada instancia de escritura (Subida)
 write_api = client_idb.write_api(write_options=SYNCHRONOUS)
 
 #pasa la hora a int
 def hour_to_int(hour):
     return ((hour[0]-gen_data["hora_apertura"])*60) + hour[1]
 
-#suma 1 a los minutos
+#suma 1 a los minutos y cambia la hora si es necesesario
 def next_time(hour):
     hour[1] += 1
     if hour[1]  >= 60:
@@ -43,10 +44,11 @@ def next_time(hour):
 
 def hour_to_date(hour):
     #date_sim = datetime.datetime.now()
-    return datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],hour[0] - gen_data["utc_zone"],hour[1],0,0)
+    return datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],hour[0] - gen_data["utc_zone"],hour[1],0,0)           #Crea una variable de tipo datetime con la fecha signada en la configuracion
 
 def gen_person(nombre):
     #Variables externas
+    #Guarda las tiendas en una lista
     shop       = []
     shops_list = []
 
@@ -82,10 +84,8 @@ def gen_person(nombre):
     #Genera data
     while (ext_var.get("num") <= (100 - client_mall.get("prob_salir"))):
 
-
-
         #Calcula la probabilidad de que el client_mall salga
-        if hora_temperatura[1] > 45 or hora_temperatura[1] < -15:    #Valores donde es 0 en la formula de probabilidad
+        if hora_temperatura[1] > 45 or hora_temperatura[1] < -15:           #Valores donde es 0 en la formula de probabilidad
             prob_salir = 0
         else:
             prob_salir = round(((-np.pow(hora_temperatura[1],2)/60)+(hora_temperatura[1]/2)+(45/4)),2)          #Formula para calcular la probabilidad tal que a -15ºC o 45ºC sea 0 (valores minimos) y la probabilidad a 15ºC sea 15%
@@ -106,22 +106,23 @@ def gen_person(nombre):
                 diff_piso = abs(client_mall["id_piso"] - tiendas[temp][1])
 
                 if diff_piso != 0:
+                    #Cambio de piso si las tiendas estan en pisos diferentes
                     for i in range(0,diff_piso):
                         client_mall["tienda_actual"] = "Transito"
                         client_mall["id_piso"] = 0
 
-                        #Sube el punto a influxdb
-
+                        #Crea una fecha usando la hora actual
                         date_sim = hour_to_date(current_hour)
-                        print(f"Fecha                 : {date_sim}")
-
+                        print(f"Fecha                 : {date_sim}") #Muestra la fecha que se subira (UTC+0)
+                        #Sube el punto a influxdb
                         p = idb.Point("Cliente").field("Temperatura",hora_temperatura[1]).tag("Nombre",client_mall.get("nombre")).tag("Tienda actual",client_mall.get("tienda_actual")).time(date_sim)
                         write_api.write(bucket=bucket, org=org, record=p)
 
-                        print(f"Nombre de cliente     : {client_mall.get("nombre")}")
-                        print(f"Temperatura afuera    : {hora_temperatura[1]}C")
-                        print(f"Tienda actual         : {client_mall.get("tienda_actual")}")
-                        if client_mall.get("hora")[1] < 10:
+                        #Imprime la informacion que se va a subir
+                        print(f"Nombre de cliente     : {client_mall.get("nombre")}")                   #Nombre del cliente
+                        print(f"Temperatura afuera    : {hora_temperatura[1]}C")                        #Temperatura fuera del mall
+                        print(f"Tienda actual         : {client_mall.get("tienda_actual")}")            #Tienda donde se encuetra el cliente (en este caso seria "Transito")
+                        if client_mall.get("hora")[1] < 10:                                             #Hora real (UTC-3 en Chile)
                             print(f"Hora                  : {client_mall.get("hora")[0]}:0{client_mall.get("hora")[1]}")
                         else:
                             print(f"Hora                  : {client_mall.get("hora")[0]}:{client_mall.get("hora")[1]}")
@@ -146,12 +147,12 @@ def gen_person(nombre):
                     client_mall["id_piso"] = tiendas[temp][1]
 
         date_sim = hour_to_date(current_hour)
-        print(f"Fecha                 : {date_sim}")
-        print(f"Nombre de cliente     : {client_mall.get("nombre")}")
-        print(f"Temperatura afuera    : {hora_temperatura[1]}C")
-        print(f"Probabilidad de salir : {abs(prob_salir)}%")
-        print(f"Tienda actual         : {client_mall.get("tienda_actual")}")
-        if client_mall.get("hora")[1] < 10:
+        print(f"Fecha                 : {date_sim}")                                    #Muestra la fecha que se subira (UTC+0)
+        print(f"Nombre de cliente     : {client_mall.get("nombre")}")                   #Nombre del cliente
+        print(f"Temperatura afuera    : {hora_temperatura[1]}C")                        #Temperatura afuera del mall
+        print(f"Probabilidad de salir : {abs(prob_salir)}%")                            #Probabilidad de salir del mall
+        print(f"Tienda actual         : {client_mall.get("tienda_actual")}")            #Tienda en la que se encuentra
+        if client_mall.get("hora")[1] < 10:                                             #Hora real (UTC-3 en Chile)
             print(f"Hora                  : {client_mall.get("hora")[0]}:0{client_mall.get("hora")[1]}")
         else:
             print(f"Hora                  : {client_mall.get("hora")[0]}:{client_mall.get("hora")[1]}")
@@ -175,11 +176,13 @@ def gen_person(nombre):
         p = idb.Point("Cliente").field("Temperatura",hora_temperatura[1]).tag("Nombre",client_mall.get("nombre")).tag("Tienda actual",client_mall.get("tienda_actual")).time(date_sim)
         write_api.write(bucket=bucket, org=org, record=p)
 
+        #Genera un numero para ver si sale o no del mall
         ext_var["num"] = random.randint(1,100)
         print(f"Numero                : {ext_var.get("num")}")
 
         client_mall["hora"] = next_time(current_hour)
 
+        #Verifica que todavia esta entre la hora de apertura y cierre
         if client_mall.get("hora")[0] - gen_data["utc_zone"] == gen_data["hora_cierre"] - gen_data["utc_zone"]:
             ext_var["num"] = 100
         else:
@@ -197,6 +200,8 @@ def gen_person(nombre):
 
 
 if __name__ == '__main__':
+
+    #Genera la Temperatura
     subprocess.call("python3 gen_temp.py", shell=True)
 
     name_list = []

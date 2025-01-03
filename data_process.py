@@ -11,16 +11,14 @@ gen_data = data["gen_config"]
 idb_data = data["idb_config"]
 dt_data  = data["fecha_config"]
 
-
-
 date_query_start = datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],gen_data["hora_apertura"] - gen_data["utc_zone"],0,0)
 date_query_stop  = datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],gen_data["hora_cierre"]- gen_data["utc_zone"],0,0)
 
 #Seteando client_mall de influxdb
 token  = os.environ.get("INFLUXDB_TOKEN")           #Token API que nos da InfluxDB
-org    = idb_data["org"]                  #Organizacion creada en InfluxDB
-url    = idb_data["url"]                  #Direccion al servicio de Influxdb
-bucket = idb_data["bucket"]               #Bucket donde se guardaran las medidas
+org    = idb_data["org"]                            #Organizacion creada en InfluxDB
+url    = idb_data["url"]                            #Direccion al servicio de Influxdb
+bucket = idb_data["bucket"]                         #Bucket donde se guardaran las medidas
 
 #Iniciando client_mall
 client_idb = idb.InfluxDBClient(
@@ -31,13 +29,26 @@ client_idb = idb.InfluxDBClient(
 
 query_api = client_idb.query_api()
 
+def sort_by_value(arr): #el valor para la comparacion tiene que estar en arr[0]
+    for i in range(len(arr) - 1, 0 ,-1):
+        swap = False
+        for j in range(i):
+            if arr[j][0] > arr[j+1][0]:
+                arr[j], arr[j+1] = arr[j+1], arr[j]
+                swap = True
+        if not swap:
+            break
+    return arr
+        
+
 def separation():
     print("-----------------------------------------------")
 
 def menu():
     print("Elija Opcion:\n")
     print("1.Tiempo promedio por persona en mall")
-    print("2.Ventas de tiendas")
+    print("2.Ventas totales por tiendas")
+    print("3.Ventas totales por hora")
     
     print("\n0.Salir")
     return input("\nIngrese opcion: ")
@@ -127,11 +138,9 @@ def mean_time():
 
 def mall_sells():
     query = f'from(bucket: "{bucket}")\
-    |> range(start: -12)\
+    |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
     |> filter(fn: (r) => r._measurement == "Compras")\
     |> filter(fn: (r) => r._field == "Compra")'
-    
-
     result = query_api.query(org=org, query=query)
 
     shops_list = []
@@ -147,29 +156,89 @@ def mall_sells():
                     shop = [shop_name,1]
                     shops_list.append(shop)
 
-                elif i != len(shops_list) - 1 and shops_list[i][0] == shop_name:
+                elif i != len(shops_list) and shops_list[i][0] == shop_name:
                     shops_list[i][1] += 1
                     break
-                
+    
+    shops_list = sort_by_value(shops_list)
+
+    add = 0
     for i in shops_list:
         print(f"Tienda {i[0]} vendio {i[1]} productos")
+        add += i[1]
+
+    print(f"\nVentas totales: {add}")
+            
+
+def sells_per_hour():
+    query = f'from(bucket: "{bucket}")\
+    |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
+    |> filter(fn: (r) => r._measurement == "Compras")\
+    |> filter(fn: (r) => r._field == "Compra")'
+    result = query_api.query(org=org, query=query)
+
+    hour_list = []
+    for table in result:
+        for record in table.records:
+            time_data = record.get_time()
+            hour =  int(time_data.strftime("%H")) + gen_data["utc_zone"]
+
+            if len(hour_list) == 0:
+                hour_list.append([hour,1])
+            
+            for i in range(0,len(hour_list)):
+                if i == len(hour_list) - 1 and hour_list[i][0] != hour:
+                    add_hour = [hour,1]
+                    hour_list.append(add_hour)
+
+                elif i != len(hour_list) and hour_list[i][0] == hour:
+                    hour_list[i][1] += 1
+                    break
+
+    hour_list = sort_by_value(hour_list)
+    
+    add = 0
+    for i in hour_list:
+        print(f"De {i[0]}:00 a {i[0] + 1}:00 se realizaron {i[1]} ventas")
+        add += i[1]
+
+    print(f"\nVentas totales: {add}")
+            
+
+
+
 
 def main():
     x = False
-    while x == False:
+    '''while x == False:
         try:
             opt = int(menu())
             match opt:
                 case 1:
                     separation()
-                    print("Opcion 1\n")
-                    mean_time()
+                    try:
+                        print("Opcion 1\n")
+                        mean_time()
+                    except:
+                        print("Error!")
                     separation()
 
                 case 2:
                     separation()
-                    print("Opcion 2\n")
-                    mall_sells()
+                    try:
+                        print("Opcion 2\n")
+                        mall_sells()
+                    except:
+                        print("ERROR!")
+                    separation()
+
+                case 3:
+                    separation()
+                    try:
+                        print("Opcion 3\n")
+                        sells_per_hour()
+                    except:
+                        print("ERROR!")
                     separation()
 
                 case 0:
@@ -185,10 +254,11 @@ def main():
         except:
             separation()
             print("ERROR! Ingrese un numero")
-            separation()
+            separation()'''
     
     #mean_time()
     #mall_sells()
+    sells_per_hour()
 
     
 
