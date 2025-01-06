@@ -52,6 +52,7 @@ def menu():
     print("2.Cantidad de personas por hora")
     print("3.Ventas totales por tiendas")
     print("4.Ventas totales por hora")
+    print("5.Ventas por hora por tienda")
     
     print("\n0.Salir")
     return input("\nIngrese opcion: ")
@@ -160,23 +161,19 @@ def mall_sells():
     result = query_api.query(org=org, query=query)
 
     shops_list = []
+
+    for i in gen_data["edificio"]:
+        for j in i["tiendas"]:
+            shop = [j,0]
+            shops_list.append(shop)
+
     for table in result:
         for record in table.records:
             shop_name = record.values.get("Tienda")
-            if len(shops_list) == 0:
-                shop = [shop_name,1]
-                shops_list.append(shop)
-
-            for i in range(0,len(shops_list)):
-                if i == len(shops_list) - 1 and shops_list[i][0] != shop_name:
-                    shop = [shop_name,1]
-                    shops_list.append(shop)
-
-                elif i != len(shops_list) and shops_list[i][0] == shop_name:
-                    shops_list[i][1] += 1
-                    break
-    
-    shops_list = sort_by_value(shops_list)
+            
+            for i in shops_list:
+                if shop_name == i[0]:
+                    i[1] += 1
 
     add = 0
     for i in shops_list:
@@ -194,24 +191,21 @@ def sells_per_hour():
     result = query_api.query(org=org, query=query)
 
     hour_list = []
+    for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
+        temp = [i,0]
+        hour_list.append(temp)
+
+    
     for table in result:
         for record in table.records:
             time_data = record.get_time()
             hour =  int(time_data.strftime("%H")) + gen_data["utc_zone"]
 
-            if len(hour_list) == 0:
-                hour_list.append([hour,1])
-            
-            for i in range(0,len(hour_list)):
-                if i == len(hour_list) - 1 and hour_list[i][0] != hour:
-                    add_hour = [hour,1]
-                    hour_list.append(add_hour)
+            for i in hour_list:
+                if i[0] == hour:
+                    i[1] += 1
 
-                elif i != len(hour_list) and hour_list[i][0] == hour:
-                    hour_list[i][1] += 1
-                    break
 
-    hour_list = sort_by_value(hour_list)
     
     add = 0
     for i in hour_list:
@@ -252,7 +246,59 @@ def people_per_hour():
     for i in hour_list:
         print(f"De {i[0]}:00 a {i[0] + 1}:00 hubieron {len(i[1])} personas")
 
+def Sales_per_shop_per_hour():
+    query = f'from(bucket: "{bucket}")\
+    |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
+    |> filter(fn: (r) => r._measurement == "Compras")\
+    |> filter(fn: (r) => r._field == "Compra")'
+    result = query_api.query(org=org, query=query)
 
+    hour_list = []          #[hora,[[piso1,[[tienda1,ventas],[tienda2,ventas],...]],[piso2,[[tienda1,ventas],[tienda2,ventas],...]],...]]
+    for i in range (gen_data["hora_apertura"],gen_data["hora_cierre"]):
+        temp = [i]
+        for j in gen_data["edificio"]:
+            piso = [j["id"]]
+            for k in j["tiendas"]:
+                tienda = [k,0]
+                piso.append(tienda)
+            temp.append(piso)
+        hour_list.append(temp)
+
+    
+    add = 0
+
+    for tables in result:
+        for record in tables.records:
+            time_data = record.get_time()
+            hour = int(time_data.strftime("%H")) + gen_data["utc_zone"]
+            shop_name = record.values.get("Tienda")
+
+            for i in hour_list:
+                if hour == i[0]:
+                    num_piso = int(shop_name[0])
+                    for j in range(1,len(i[num_piso])):
+                        if i[num_piso][j][0] == shop_name:
+                            add += 1
+                            i[num_piso][j][1] += 1
+                            break
+                    break
+                
+    for i in hour_list:
+        add_per_hour = 0
+        print(f"Hora: {i[0]}:00\n")
+        for j in range(1,len(i)):
+            for k in gen_data["edificio"]:
+                if k["id"] == i[j][0]:
+                    print(f"Piso:{k["nombre_piso"]}")
+                    break
+            for k in range(1,len(i[j])):
+                print(f"Tienda {i[j][k][0]} hizo {i[j][k][1]} ventas",end = " | ")
+                add_per_hour += i[j][k][1]
+            print()
+        print(f"Ventas de la hora: {add_per_hour}")
+        separation()
+
+    print(f"\nSe realizaron {add} ventas en total")
 
 
 def main():
@@ -297,6 +343,15 @@ def main():
                         print("ERROR!")
                     separation()
 
+                case 5:
+                    separation()
+                    try:
+                        print("Opcion 5\n")
+                        Sales_per_shop_per_hour()
+                    except:
+                        print("ERROR!")
+                    separation()
+
                 
                 case 0:
                     separation()
@@ -317,6 +372,7 @@ def main():
     #mall_sells()
     #sells_per_hour()
     #people_per_hour()
+    #sales_per_shop_per_hour()
 
     
 
