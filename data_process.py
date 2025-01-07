@@ -69,9 +69,9 @@ def mean_time():
     person_list = []
     for table in result:
         for record in table.records:
-            date = record.get_time()
+            date         = record.get_time()
             time_measure = datetime.datetime(int(date.strftime("%Y")),int(date.strftime("%m")),int(date.strftime("%d")),int(date.strftime("%H")) + gen_data["utc_zone"],int(date.strftime("%M")),int(date.strftime("%S")))
-            name_measure= record.values.get("Nombre")
+            name_measure = record.values.get("Nombre")
 
             if name_measure != None:
                 print(f"Nombre: {name_measure}, Timestamp: {time_measure}, hora en int: {time_measure.strftime("%H:%M:%S")}")
@@ -199,7 +199,7 @@ def sells_per_hour():
     for table in result:
         for record in table.records:
             time_data = record.get_time()
-            hour =  int(time_data.strftime("%H")) + gen_data["utc_zone"]
+            hour      = int(time_data.strftime("%H")) + gen_data["utc_zone"]
 
             for i in hour_list:
                 if i[0] == hour:
@@ -230,7 +230,7 @@ def people_per_hour():
     for table in result:
         for record in table.records:
             hour_data = record.get_time()
-            hour = int(hour_data.strftime("%H")) + gen_data["utc_zone"]
+            hour      = int(hour_data.strftime("%H")) + gen_data["utc_zone"]
             name_data = record.values.get("Nombre")
             
             
@@ -255,14 +255,14 @@ def Sales_per_shop_per_hour():
 
     hour_list = []          #[hora,[[piso1,[[tienda1,ventas],[tienda2,ventas],...]],[piso2,[[tienda1,ventas],[tienda2,ventas],...]],...]]
     for i in range (gen_data["hora_apertura"],gen_data["hora_cierre"]):
-        temp = [i]
+        hour = [i]
         for j in gen_data["edificio"]:
-            piso = [j["id"]]
+            floor = [j["id"]]
             for k in j["tiendas"]:
-                tienda = [k,0]
-                piso.append(tienda)
-            temp.append(piso)
-        hour_list.append(temp)
+                shop = [k,0]
+                floor.append(shop)
+            hour.append(floor)
+        hour_list.append(hour)
 
     
     add = 0
@@ -270,16 +270,16 @@ def Sales_per_shop_per_hour():
     for tables in result:
         for record in tables.records:
             time_data = record.get_time()
-            hour = int(time_data.strftime("%H")) + gen_data["utc_zone"]
+            hour      = int(time_data.strftime("%H")) + gen_data["utc_zone"]
             shop_name = record.values.get("Tienda")
 
             for i in hour_list:
                 if hour == i[0]:
-                    num_piso = int(shop_name[0])
-                    for j in range(1,len(i[num_piso])):
-                        if i[num_piso][j][0] == shop_name:
+                    num_floor = int(shop_name[0])
+                    for j in range(1,len(i[num_floor])):
+                        if i[num_floor][j][0] == shop_name:
                             add += 1
-                            i[num_piso][j][1] += 1
+                            i[num_floor][j][1] += 1
                             break
                     break
                 
@@ -300,9 +300,70 @@ def Sales_per_shop_per_hour():
 
     print(f"\nSe realizaron {add} ventas en total")
 
+def people_per_store_per_minute():
+    query = f'from(bucket: "{bucket}")\
+            |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
+            |> filter(fn: (r) => r._measurement == "Cliente")\
+            |> group(columns: ["Nombre"])'
+    result = query_api.query(org=org, query=query)
+
+    hour_list = []
+
+    for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
+        hour = [i]
+        for j in range(0,60):
+            minute = [j,[]]
+            hour.append(minute)
+        hour_list.append(hour)
+
+    for table in result:
+        for record in table.records:
+            hour_data = record.get_time()
+            hour = int(hour_data.strftime("%H"))+ gen_data["utc_zone"]
+            minute = int(hour_data.strftime("%M"))
+            shop_name = record.values.get("Tienda actual")
+
+            pos_hour = hour - gen_data["hora_apertura"]
+            pos_minute = minute +1
+
+
+            if len(hour_list[pos_hour][pos_minute][1]) == 0:
+
+                shop = [shop_name,1]
+                hour_list[pos_hour][pos_minute][1].append(shop)
+            else:
+                for i in hour_list[pos_hour][pos_minute][1]:
+                    if i[0] == shop_name:
+                        i[1] += 1
+                        break
+                    elif i[0] != shop_name and i == hour_list[pos_hour][pos_minute][1][len(hour_list[pos_hour][pos_minute][1]) - 1]:
+                        shop = [shop_name,1]
+                        hour_list[pos_hour][pos_minute][1].append(shop)
+                        break
+
+
+            
+
+    for i in hour_list:
+        add_per_hour = 0
+        for j in range(1,len(i)):
+            if i[j][0] < 10:
+                print(f"{i[0]}:0{i[j][0]}",end = ": ")
+            else:
+                print(f"{i[0]}:{i[j][0]}",end = ": ")
+            print(i[j][1])
+            for k in i[j][1]:
+                add_per_hour += k[1]
+        print(f"\nPersonas por hora: {add_per_hour}")
+        separation()
+
+
+
+
 
 def main():
-    x = False
+    '''x = False
+
     while x == False:
         try:
             opt = int(menu())
@@ -366,13 +427,15 @@ def main():
         except:
             separation()
             print("ERROR! Ingrese un numero")
-            separation()
+            separation()'''
     
     #mean_time()
     #mall_sells()
     #sells_per_hour()
+    #people_per_store_per_minute()
     #people_per_hour()
     #sales_per_shop_per_hour()
+    
 
     
 
