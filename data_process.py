@@ -3,6 +3,8 @@ import numpy as np
 import influxdb_client as idb
 from influxdb_client.client.write_api import SYNCHRONOUS
 import datetime
+import matplotlib.pyplot as plt
+from matplotlib import style
 
 #Cargando JSON
 with open("config.json") as f:
@@ -53,6 +55,7 @@ def menu():
     print("3.Ventas totales por tiendas")
     print("4.Ventas totales por hora")
     print("5.Ventas por hora por tienda")
+    print("6.Perosnas por tiendas por minuto")
     
     print("\n0.Salir")
     return input("\nIngrese opcion: ")
@@ -70,28 +73,29 @@ def mean_time():
     for table in result:
         for record in table.records:
             date         = record.get_time()
-            time_measure = datetime.datetime(int(date.strftime("%Y")),int(date.strftime("%m")),int(date.strftime("%d")),int(date.strftime("%H")) + gen_data["utc_zone"],int(date.strftime("%M")),int(date.strftime("%S")))
             name_measure = record.values.get("Nombre")
-
+            #Guarda el primer nombre y sus timestamp
             if name_measure != None:
-                print(f"Nombre: {name_measure}, Timestamp: {time_measure}, hora en int: {time_measure.strftime("%H:%M:%S")}")
+                print(f"Nombre: {name_measure}, Timestamp: {date}, Hora: {date.strftime("%H:%M:%S")}")
                 if len(person_list) == 0:
                     print("Agregado a lista de persona")
-                    person_data = [name_measure,time_measure.strftime("%H:%M:%S"),time_measure.strftime("%H:%M:%S")]
+                    person_data = [name_measure,date.strftime("%H:%M:%S"),date.strftime("%H:%M:%S")]
                     person_list.append(person_data)
                 else:
                     for i in range(0,len(person_list)):
+                        #Agrega el nombre a la lista si no lo encuentra
                         if i == len(person_list)-1 and person_list[i][0] != name_measure:
                             print("Nombre no esta en la lista, Agregando...")
-                            person_data = [name_measure,time_measure.strftime("%H:%M:%S"),time_measure.strftime("%H:%M:%S")]
+                            person_data = [name_measure,date.strftime("%H:%M:%S"),date.strftime("%H:%M:%S")]
                             person_list.append(person_data)
+                        #si encuentra el nombre compara el timestamp y verifica si es mayor o menor
                         elif i != len(person_list) and person_list[i][0] == name_measure:
-                            if person_list[i][1] > time_measure.strftime("%H:%M:%S"):
+                            if person_list[i][1] > date.strftime("%H:%M:%S"):
                                 print("Menor tiempo")
-                                person_list[i][1] = time_measure.strftime("%H:%M:%S")
-                            if person_list[i][2] < time_measure.strftime("%H:%M:%S"):
+                                person_list[i][1] = date.strftime("%H:%M:%S")
+                            elif person_list[i][2] < date.strftime("%H:%M:%S"):
                                 print("Mayor tiempo")
-                                person_list[i][2] = time_measure.strftime("%H:%M:%S")
+                                person_list[i][2] = date.strftime("%H:%M:%S")
     
     if len(person_list) == 0:
         print("No hay data")
@@ -99,6 +103,7 @@ def mean_time():
 
     #Calcula el tiempo que se queda en el mall
     person_time_list = []
+    total_time_list = []
     for person in person_list:
         enter = person[1].split(":")
         for i in range (0,len(enter)):
@@ -122,17 +127,62 @@ def mean_time():
 
         if second / 10 < 1:
             if minute / 10 < 1:
-                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:0{minute}:0{second}")
+                total_hour= f"{hour}:0{minute}:0{second}"
             else:
-                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:{minute}:0{second}")
+                total_hour= f"{hour}:{minute}:0{second}"
         else:
             if minute / 10 < 1:
-                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:0{minute}:{second}")
+                total_hour= f"{hour}:0{minute}:{second}"
             else:
-                print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {hour}:{minute}:{second}")
+                total_hour= f"{hour}:{minute}:{second}"
+                
+        #print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {total_hour}")
+
+        if len(total_time_list) == 0:
+            temp = [total_hour,1]
+            total_time_list.append(temp)
+        else:
+            for i in range(0,len(total_time_list)):
+                if i == len(total_time_list) - 1 and total_time_list[i][0] != total_hour:
+                    temp = [total_hour,1]
+                    total_time_list.append(temp)
+                elif i != len(total_time_list) and total_time_list[i][0] == total_hour:
+                   total_time_list[i][1] += 1
+                   break
+
 
         person_time_list.append(minute + (hour *60))
 
+    total_time_list = sort_by_value(total_time_list)
+
+    x = []
+    y = []
+
+    for i in total_time_list:
+        x.append(i[0])
+        y.append(i[1])
+        print(i)
+
+    #genera el grafico
+    xpoint = np.array(x)
+    ypoint = np.array(y)
+
+    barplot = plt.bar(xpoint,ypoint)
+
+    plt.title("Tiempo de estadia")
+    plt.xlabel("Tiempo")
+    plt.ylabel("Cantidad")
+    plt.xticks(rotation=90)
+
+    plt.bar_label(barplot, labels=ypoint,label_type="center")
+
+    figure = plt.gcf()
+    figure.set_size_inches(19.20,10.80)
+    
+    plt.savefig("graph/tiempoEstadia.png", dpi = 300, bbox_inches="tight")
+    plt.close()
+
+    
     #Calcula el tiempo prometio que se quedan las personas
     add = 0
     for i in person_time_list:
@@ -153,7 +203,10 @@ def mean_time():
         else:
             print(f"Tiempo promedio de estadia: {int(mean)}:{int(temp)} horas")
 
+#calcula las ventas del mall
 def mall_sells():
+
+    #Hace la consulta
     query = f'from(bucket: "{bucket}")\
     |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
     |> filter(fn: (r) => r._measurement == "Compras")\
@@ -162,11 +215,13 @@ def mall_sells():
 
     shops_list = []
 
+    #Genera lista con las tiendas
     for i in gen_data["edificio"]:
         for j in i["tiendas"]:
             shop = [j,0]
             shops_list.append(shop)
 
+    #Saca la informacion de la consulta realizada
     for table in result:
         for record in table.records:
             shop_name = record.values.get("Tienda")
@@ -174,13 +229,35 @@ def mall_sells():
             for i in shops_list:
                 if shop_name == i[0]:
                     i[1] += 1
-
+    
+    x   = []
+    y   = [] 
     add = 0
+    #Imprime los datos en el terminal y los agrega a una lista
     for i in shops_list:
         print(f"Tienda {i[0]} vendio {i[1]} productos")
+        x.append(i[0])
+        y.append(i[1])
         add += i[1]
+    
+    #genera el grafico
+    xpoint = np.array(x)
+    ypoint = np.array(y)
+
+    barplot = plt.bar(xpoint,ypoint)
+
+    plt.title("Cantidad de ventas totales por tiendas")
+    plt.xlabel("Tiendas")
+    plt.ylabel("Cantidad de Ventas")
+
+    plt.bar_label(barplot, labels=ypoint,label_type="center")
 
     print(f"\nVentas totales: {add}")
+
+    
+    plt.savefig("graph/VentasTotales.png", dpi = 300, bbox_inches="tight")
+    plt.close()
+    #plt.show()
             
 
 def sells_per_hour():
@@ -200,20 +277,40 @@ def sells_per_hour():
         for record in table.records:
             time_data = record.get_time()
             hour      = int(time_data.strftime("%H")) + gen_data["utc_zone"]
-
             for i in hour_list:
                 if i[0] == hour:
                     i[1] += 1
 
-
-    
+    x   = []
+    y   = []
     add = 0
+
     for i in hour_list:
         print(f"De {i[0]}:00 a {i[0] + 1}:00 se realizaron {i[1]} ventas")
+        x.append(f"{i[0]}:00 - {i[0] + 1}:00")
+        y.append(i[1])
         add += i[1]
 
+    xpoint = np.array(x)
+    ypoint = np.array(y)
+
+    barplot = plt.bar(xpoint,ypoint)
+
+    plt.title("Cantidad de ventas por hora")
+    plt.xlabel("Hora")
+    plt.ylabel("Cantidad de Ventas")
+    plt.xticks(rotation=90)
+
+    plt.bar_label(barplot, labels=ypoint,label_type="center")
+
     print(f"\nVentas totales: {add}")
-            
+
+    
+    plt.savefig("graph/VentasPorHora.png", dpi = 300, bbox_inches="tight")
+    plt.close()
+    #plt.show()
+
+#Personas por hora     
 def people_per_hour():
     query = f'from(bucket: "{bucket}")\
             |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
@@ -241,12 +338,30 @@ def people_per_hour():
                         i[1].append(name_data)
                     break
 
-    #hour_list = sort_by_value(hour_list)
+    x = []
+    y = []
 
     for i in hour_list:
         print(f"De {i[0]}:00 a {i[0] + 1}:00 hubieron {len(i[1])} personas")
+        x.append(f"{i[0]}:00 - {i[0] + 1}:00")
+        y.append(len(i[1]))
 
-def Sales_per_shop_per_hour():
+    xpoint = np.array(x)
+    ypoint = np.array(y)
+
+    barplot = plt.bar(xpoint,ypoint)
+
+    plt.title("Cantidad de personas por hora")
+    plt.xlabel("Hora")
+    plt.ylabel("Cantidad de Personas")
+    plt.xticks(rotation=90)
+
+    plt.bar_label(barplot, labels=ypoint,label_type="center")
+
+    plt.savefig("graph/PersonasPorHora.png", dpi = 300, bbox_inches="tight")
+    plt.close()
+
+def sales_per_shop_per_hour():
     query = f'from(bucket: "{bucket}")\
     |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
     |> filter(fn: (r) => r._measurement == "Compras")\
@@ -282,9 +397,15 @@ def Sales_per_shop_per_hour():
                             i[num_floor][j][1] += 1
                             break
                     break
-                
+    
+    x_total = []            #Guarda la hora
+    y_total = []            #Guarda las ventas totales por hora
     for i in hour_list:
+        x_shop  = []            #Guarda el nombre de las tiendas
+        y_shop  = []            #Guarda las ventas de la hora por tienda
+        
         add_per_hour = 0
+
         print(f"Hora: {i[0]}:00\n")
         for j in range(1,len(i)):
             for k in gen_data["edificio"]:
@@ -293,10 +414,48 @@ def Sales_per_shop_per_hour():
                     break
             for k in range(1,len(i[j])):
                 print(f"Tienda {i[j][k][0]} hizo {i[j][k][1]} ventas",end = " | ")
+                x_shop.append(i[j][k][0])
+                y_shop.append(i[j][k][1])
                 add_per_hour += i[j][k][1]
             print()
         print(f"Ventas de la hora: {add_per_hour}")
+        x_total.append(f"{i[0]}:00")
+        y_total.append(add_per_hour)
+
+        #Grafico de tiendas por hora
+
+        xpoint = np.array(x_shop)
+        ypoint = np.array(y_shop)
+
+        barplot = plt.bar(xpoint,ypoint)
+
+        plt.title(f"{i[0]}:00 a {i[0] + 1}:00")
+        plt.xlabel("Tienda")
+        plt.ylabel("Cantidad de Ventas")
+
+        plt.bar_label(barplot, labels=ypoint,label_type="center")
+
+        plt.savefig(f"graph/ventasPTPH/{i[0]}_ventas.png", dpi = 300, bbox_inches="tight")
+        plt.close()
+
+
         separation()
+
+    #Grafico de total de ventas por hora 
+    xpoint = np.array(x_total)
+    ypoint = np.array(y_total)
+
+    barplot = plt.bar(xpoint,ypoint)
+
+    plt.title(f"Ventas del dia")
+    plt.xlabel("Hora")
+    plt.ylabel("Cantidad de Ventas")
+    plt.xticks(rotation=90)
+
+    plt.bar_label(barplot, labels=ypoint,label_type="center")
+
+    plt.savefig(f"graph/ventasPTPH/total_ventas.png", dpi = 300, bbox_inches="tight")
+    plt.close()
 
     print(f"\nSe realizaron {add} ventas en total")
 
@@ -346,14 +505,42 @@ def people_per_store_per_minute():
 
     for i in hour_list:
         add_per_hour = 0
+        x = []
+        y = []
         for j in range(1,len(i)):
+            add_per_minute = 0
             if i[j][0] < 10:
                 print(f"{i[0]}:0{i[j][0]}",end = ": ")
+                x.append(f"{i[0]}:0{i[j][0]}")
             else:
                 print(f"{i[0]}:{i[j][0]}",end = ": ")
+                x.append(f"{i[0]}:{i[j][0]}")
             print(i[j][1])
             for k in i[j][1]:
                 add_per_hour += k[1]
+                add_per_minute += k[1]
+            y.append(add_per_minute)
+        
+        #Crea el grafico
+
+        xpoint = np.array(x)
+        ypoint = np.array(y)
+
+        barplot = plt.bar(xpoint,ypoint)
+
+        plt.title(f"Personas por minuto de {i[0]}:00 a {i[0] + 1}:00")
+        plt.xlabel("Hora")
+        plt.ylabel("Cantidad de Personas")
+        plt.xticks(rotation=90)
+
+        plt.bar_label(barplot, labels=ypoint,label_type="center")
+
+        figure = plt.gcf()
+        figure.set_size_inches(19.20,10.80)
+        plt.savefig(f"graph/personasPM/{i[0]}_ventas.png", dpi = 300, bbox_inches="tight")
+        plt.close()
+
+
         print(f"\nPersonas por hora: {add_per_hour}")
         separation()
 
@@ -362,6 +549,7 @@ def people_per_store_per_minute():
 
 
 def main():
+    style.use("ggplot")
     '''x = False
 
     while x == False:
@@ -412,6 +600,15 @@ def main():
                     except:
                         print("ERROR!")
                     separation()
+                case 6:
+                    separation()
+                    try:
+                        print("Opcion 6\n")
+                        people_per_store_per_minute()
+                    except:
+                        print("ERROR!")
+                    separation()
+
 
                 
                 case 0:
@@ -423,13 +620,13 @@ def main():
                 case _:
                     separation()
                     print("ERROR! No es una opcion")
-                    separation()
+                    separation()s
         except:
             separation()
             print("ERROR! Ingrese un numero")
             separation()'''
     
-    #mean_time()
+    mean_time()
     #mall_sells()
     #sells_per_hour()
     #people_per_store_per_minute()
