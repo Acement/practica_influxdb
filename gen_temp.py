@@ -6,6 +6,7 @@ with open("config.json",'r') as f:
 gen_data = data["gen_config"]
 ext_data = data["idb_config"]
 
+#Funcion para generar las temperaturas para simular
 def gen_temperature():
     open_time   = 60 * (gen_data["hora_cierre"] - gen_data["hora_apertura"]) #tiempo abierto en minutos
     temperature = gen_data["temperatura"]

@@ -32,7 +32,8 @@ client_idb = idb.InfluxDBClient(
 
 query_api = client_idb.query_api()
 
-def sort_by_value(arr): #el valor para la comparacion tiene que estar en arr[0]
+#Bubble sort modificado
+def sort_by_value(arr):#el valor para la comparacion tiene que estar en arr[0]
     for i in range(len(arr) - 1, 0 ,-1):
         swap = False
         for j in range(i):
@@ -62,6 +63,8 @@ def menu():
 
 #Calcula el tiempo que cada cliente pasa en el mall y el tiempo promedio
 def mean_time():
+    
+    #Consulta a influxdb
     query = f'from(bucket: "{bucket}")\
             |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
             |> filter(fn: (r) => r._measurement == "Cliente")\
@@ -136,8 +139,7 @@ def mean_time():
             else:
                 total_hour= f"{hour}:{minute}:{second}"
                 
-        #print(f"Persona: {person[0]}, Entrada: {person[1]}, Salida: {person[2]}, Tiempo total: {total_hour}")
-
+        #Lo mete a lista con los tiempos totales que se quedaron las personas
         if len(total_time_list) == 0:
             temp = [total_hour,1]
             total_time_list.append(temp)
@@ -153,6 +155,7 @@ def mean_time():
 
         person_time_list.append(minute + (hour *60))
 
+    #Ordena la lista de menor a mayor tiempo de estadia
     total_time_list = sort_by_value(total_time_list)
 
     x = []
@@ -179,6 +182,7 @@ def mean_time():
     figure = plt.gcf()
     figure.set_size_inches(19.20,10.80)
     
+    #Guarda el grafico
     plt.savefig("graph/tiempoEstadia.png", dpi = 300, bbox_inches="tight")
     plt.close()
 
@@ -249,34 +253,40 @@ def mall_sells():
     plt.title("Cantidad de ventas totales por tiendas")
     plt.xlabel("Tiendas")
     plt.ylabel("Cantidad de Ventas")
+    plt.xticks(rotation=90)
+
 
     plt.bar_label(barplot, labels=ypoint,label_type="center")
 
     print(f"\nVentas totales: {add}")
 
-    
+    #Guarda el grafico
     plt.savefig("graph/VentasTotales.png", dpi = 300, bbox_inches="tight")
     plt.close()
-    #plt.show()
-            
 
+            
+#Calcula las ventas del mall por hora
 def sells_per_hour():
+    
+    #Consulta a influxdb
     query = f'from(bucket: "{bucket}")\
     |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
     |> filter(fn: (r) => r._measurement == "Compras")\
     |> filter(fn: (r) => r._field == "Compra")'
     result = query_api.query(org=org, query=query)
 
+    #Genera una lista con la hora y sus valores en 0
     hour_list = []
     for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
         temp = [i,0]
         hour_list.append(temp)
 
-    
+    #Recorre la consulta
     for table in result:
         for record in table.records:
             time_data = record.get_time()
             hour      = int(time_data.strftime("%H")) + gen_data["utc_zone"]
+            #Agrega venta a la hora
             for i in hour_list:
                 if i[0] == hour:
                     i[1] += 1
@@ -285,6 +295,7 @@ def sells_per_hour():
     y   = []
     add = 0
 
+    #Imprime los valores y los guarda en listas para generar los graficos
     for i in hour_list:
         print(f"De {i[0]}:00 a {i[0] + 1}:00 se realizaron {i[1]} ventas")
         x.append(f"{i[0]}:00 - {i[0] + 1}:00")
@@ -305,13 +316,15 @@ def sells_per_hour():
 
     print(f"\nVentas totales: {add}")
 
-    
+    #Guarda el grafico
     plt.savefig("graph/VentasPorHora.png", dpi = 300, bbox_inches="tight")
     plt.close()
-    #plt.show()
+
 
 #Personas por hora     
 def people_per_hour():
+    
+    #Hace consulta a influxdb
     query = f'from(bucket: "{bucket}")\
             |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
             |> filter(fn: (r) => r._measurement == "Cliente")\
@@ -320,10 +333,12 @@ def people_per_hour():
 
     hour_list = []
 
+    #Genera una lista con las horas
     for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
                 temp = [i,[]]
                 hour_list.append(temp)
 
+    #Recorre la consulta
     for table in result:
         for record in table.records:
             hour_data = record.get_time()
@@ -361,7 +376,10 @@ def people_per_hour():
     plt.savefig("graph/PersonasPorHora.png", dpi = 300, bbox_inches="tight")
     plt.close()
 
+#Imprime las ventas por hora
 def sales_per_shop_per_hour():
+    
+    #Consulta a influxdb
     query = f'from(bucket: "{bucket}")\
     |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
     |> filter(fn: (r) => r._measurement == "Compras")\
@@ -379,9 +397,9 @@ def sales_per_shop_per_hour():
             hour.append(floor)
         hour_list.append(hour)
 
-    
     add = 0
 
+    #Recorre la consulta
     for tables in result:
         for record in tables.records:
             time_data = record.get_time()
@@ -432,6 +450,8 @@ def sales_per_shop_per_hour():
         plt.title(f"{i[0]}:00 a {i[0] + 1}:00")
         plt.xlabel("Tienda")
         plt.ylabel("Cantidad de Ventas")
+        plt.xticks(rotation=90)
+
 
         plt.bar_label(barplot, labels=ypoint,label_type="center")
 
@@ -454,12 +474,16 @@ def sales_per_shop_per_hour():
 
     plt.bar_label(barplot, labels=ypoint,label_type="center")
 
+    #Guarda el grafico
     plt.savefig(f"graph/ventasPTPH/total_ventas.png", dpi = 300, bbox_inches="tight")
     plt.close()
 
     print(f"\nSe realizaron {add} ventas en total")
 
+#Personas por tiendas por minuto
 def people_per_store_per_minute():
+
+    #Consulta a influxdb
     query = f'from(bucket: "{bucket}")\
             |> range(start: {date_query_start.strftime("%Y-%m-%dT%H:%M:%SZ")}, stop: {date_query_stop.strftime("%Y-%m-%dT%H:%M:%SZ")})\
             |> filter(fn: (r) => r._measurement == "Cliente")\
@@ -468,6 +492,7 @@ def people_per_store_per_minute():
 
     hour_list = []
 
+    #genera una lista con horas que tambiambien incluyen los minutos
     for i in range(gen_data["hora_apertura"],gen_data["hora_cierre"]):
         hour = [i]
         for j in range(0,60):
@@ -475,6 +500,7 @@ def people_per_store_per_minute():
             hour.append(minute)
         hour_list.append(hour)
 
+    #Recorre la consulta
     for table in result:
         for record in table.records:
             hour_data = record.get_time()
@@ -500,9 +526,7 @@ def people_per_store_per_minute():
                         hour_list[pos_hour][pos_minute][1].append(shop)
                         break
 
-
-            
-
+    #Imprime los valores y los guarda en lista x e y para crear los graficos
     for i in hour_list:
         add_per_hour = 0
         x = []
@@ -537,6 +561,8 @@ def people_per_store_per_minute():
 
         figure = plt.gcf()
         figure.set_size_inches(19.20,10.80)
+
+        #Guarda el grafico
         plt.savefig(f"graph/personasPM/{i[0]}_ventas.png", dpi = 300, bbox_inches="tight")
         plt.close()
 
@@ -550,12 +576,16 @@ def people_per_store_per_minute():
 
 def main():
     style.use("ggplot")
-    '''x = False
 
+
+    #Logica del menu
+    x = False
     while x == False:
         try:
             opt = int(menu())
             match opt:
+
+                #Opcion 1: Tiempos promedios
                 case 1:
                     separation()
                     try:
@@ -565,6 +595,7 @@ def main():
                         print("Error!")
                     separation()
                 
+                #Opcion 2: Personas por hora
                 case 2:
                     separation()
                     try:
@@ -574,6 +605,7 @@ def main():
                         print("ERROR!")
                     separation()
 
+                #Opcion 3: Ventas por tienda
                 case 3:
                     separation()
                     try:
@@ -583,6 +615,7 @@ def main():
                         print("ERROR!")
                     separation()
 
+                #Opcion 4: Ventas por hora
                 case 4:
                     separation()
                     try:
@@ -592,14 +625,17 @@ def main():
                         print("ERROR!")
                     separation()
 
+                #Opcion 5: Ventas por tienda por hora
                 case 5:
                     separation()
                     try:
                         print("Opcion 5\n")
-                        Sales_per_shop_per_hour()
+                        sales_per_shop_per_hour()
                     except:
                         print("ERROR!")
                     separation()
+
+                #Opcion 6: Personas por tienda por minuto, Grafico: Personas por minuto
                 case 6:
                     separation()
                     try:
@@ -608,33 +644,26 @@ def main():
                     except:
                         print("ERROR!")
                     separation()
-
-
                 
+                #Opcion 0: Salir
                 case 0:
                     separation()
                     print("Saliendo...")
                     separation()
                     x = True
                 
+                #default
                 case _:
                     separation()
                     print("ERROR! No es una opcion")
-                    separation()s
+                    separation()
+
+        #default
         except:
             separation()
             print("ERROR! Ingrese un numero")
-            separation()'''
-    
-    mean_time()
-    #mall_sells()
-    #sells_per_hour()
-    #people_per_store_per_minute()
-    #people_per_hour()
-    #sales_per_shop_per_hour()
-    
+            separation() 
 
-    
-
+#Arranca el programa
 if __name__ == "__main__":
     main()

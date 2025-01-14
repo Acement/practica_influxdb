@@ -5,15 +5,13 @@ import multiprocessing as mp
 import influxdb_client as idb
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+#Abre el JSON de configuracion y guarda los datos en variables
 with open("config.json",'r') as f:
     data = json.load(f)
 gen_data = data["gen_config"]
 idb_data = data["idb_config"]
 dt_data  = data["fecha_config"]
 
-with open("temperature.json") as f:
-    data= json.load(f)
-temperature_data = data["temperature"]
 
 #Seteando client_mall de influxdb
 token  = os.environ.get("INFLUXDB_TOKEN")           #Token API que nos da InfluxDB
@@ -47,6 +45,13 @@ def hour_to_date(hour):
     return datetime.datetime(dt_data["año"],dt_data["mes"],dt_data["dia"],hour[0] - gen_data["utc_zone"],hour[1],0,0)           #Crea una variable de tipo datetime con la fecha signada en la configuracion
 
 def gen_person(nombre):
+    #Abre el Json de las temperaturas simuladas y las guarda
+    with open("temperature.json") as f:
+        data= json.load(f)
+    temperature_data = data["temperature"]
+
+
+
     #Variables externas
     #Guarda las tiendas en una lista
     shop       = []
@@ -168,7 +173,7 @@ def gen_person(nombre):
                 for i in range(0,len(tiendas)):
                     if tienda_actual == tiendas[i][0]:
                         ext_var["tiendas"][i][2] += 1
-                        c = idb.Point("Compras").tag("Nombre",client_mall.get("nombre")).tag("Tienda",tienda_actual).field("Compra",1).time(date_sim)
+                        c = idb.Point("Compras").tag("Nombre",client_mall.get("nombre")).tag("Tienda",tienda_actual).field("Compra",1).time(date_sim)           #Sube el punto a influxdb
                         write_api.write(bucket=bucket, org=org, record=c)
                         break
 
