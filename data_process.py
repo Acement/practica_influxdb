@@ -56,7 +56,7 @@ def menu():
     print("3.Ventas totales por tiendas")
     print("4.Ventas totales por hora")
     print("5.Ventas por hora por tienda")
-    print("6.Perosnas por tiendas por minuto")
+    print("6.Personas por tiendas por minuto")
     
     print("\n0.Salir")
     return input("\nIngrese opcion: ")
